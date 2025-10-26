@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 数据目录（不提交用户数据）
+temp/*
+output/*
+!temp/.gitkeep
+!output/.gitkeep
+
+# 输入图片（可选：如果想保留示例图片，可以注释掉）
+# input/*
+# !input/.gitkeep
+
+# 日志
+*.log
+server.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.bak
+
