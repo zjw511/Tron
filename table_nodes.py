@@ -76,16 +76,49 @@ class PreviewTableNode(NodeBase):
         image_path = Path(self.output_dir) / image_filename
         
         try:
-            # 创建图表
-            fig, ax = plt.subplots(figsize=(12, min(10, len(df_display) * 0.5 + 2)))
+            # 计算合适的图片尺寸
+            num_cols = len(df_display.columns)
+            num_rows = len(df_display)
+            
+            # 根据列数和行数动态调整图片大小
+            # 每列约1.2英寸，每行约0.35英寸
+            col_width = min(1.5, max(0.8, 12 / (num_cols + 1)))  # 动态列宽
+            fig_width = min(20, (num_cols + 1) * col_width)  # 最大20英寸宽
+            fig_height = min(15, num_rows * 0.35 + 1.5)  # 最大15英寸高
+            
+            # 创建图表，去除所有边距
+            fig = plt.figure(figsize=(fig_width, fig_height))
             fig.patch.set_facecolor('#1e1e1e')
+            
+            # 添加标题（在figure上）
+            fig.suptitle(
+                f"{title}  |  {len(df)} rows × {len(df.columns)} columns" + 
+                (f"  (showing first {display_rows})" if len(df) > display_rows else ""),
+                color='white', fontsize=11, y=0.98
+            )
+            
+            # 创建ax，占据几乎全部空间
+            ax = fig.add_subplot(111)
             ax.axis('tight')
             ax.axis('off')
             
-            # 准备表格数据
-            cell_text = df_display.values.tolist()
+            # 准备表格数据（格式化显示）
+            cell_text = []
+            for row in df_display.values:
+                formatted_row = []
+                for cell in row:
+                    if pd.isna(cell):
+                        formatted_row.append('NaN')
+                    elif isinstance(cell, float):
+                        formatted_row.append(f'{cell:.4f}' if abs(cell) < 1000 else f'{cell:.2e}')
+                    else:
+                        # 限制单元格文本长度
+                        cell_str = str(cell)
+                        formatted_row.append(cell_str[:50] + '...' if len(cell_str) > 50 else cell_str)
+                cell_text.append(formatted_row)
+            
             col_labels = list(df_display.columns)
-            row_labels = [f"{i}" for i in range(len(df_display))]
+            row_labels = [str(i) for i in range(len(df_display))]
             
             # 创建表格
             table = ax.table(
@@ -94,38 +127,46 @@ class PreviewTableNode(NodeBase):
                 colLabels=col_labels,
                 cellLoc='left',
                 loc='center',
-                colWidths=[0.15] * len(col_labels)
+                colWidths=[col_width / fig_width] * num_cols  # 均匀分配宽度
             )
             
             # 设置样式
             table.auto_set_font_size(False)
-            table.set_fontsize(9)
-            table.scale(1, 1.5)
+            table.set_fontsize(8)
+            table.scale(1, 1.2)  # 减小垂直缩放，更紧凑
             
             # 设置颜色
             for (i, j), cell in table.get_celld().items():
                 if i == 0:  # 表头
                     cell.set_facecolor('#2a2a2a')
-                    cell.set_text_props(color='white', weight='bold')
+                    cell.set_text_props(color='white', weight='bold', fontsize=8)
                 elif j == -1:  # 行号列
                     cell.set_facecolor('#2a2a2a')
-                    cell.set_text_props(color='#888')
+                    cell.set_text_props(color='#888', fontsize=7, ha='center')
                 else:  # 数据单元格
                     if i % 2 == 0:
                         cell.set_facecolor('#1a1a1a')
                     else:
                         cell.set_facecolor('#242424')
-                    cell.set_text_props(color='#ddd')
+                    cell.set_text_props(color='#ddd', fontsize=8)
                 
                 cell.set_edgecolor('#444')
+                cell.set_linewidth(0.5)
+                
+                # 减少padding
+                cell.PAD = 0.02
             
-            # 添加标题
-            plt.title(f"{title}\n{len(df)} rows × {len(df.columns)} columns" + 
-                     (f" (showing first {display_rows})" if len(df) > display_rows else ""),
-                     color='white', pad=20, fontsize=12)
+            # 调整布局，减少边距
+            plt.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.02)
             
-            plt.tight_layout()
-            plt.savefig(image_path, facecolor='#1e1e1e', dpi=100, bbox_inches='tight')
+            # 保存图片，去除多余空白
+            plt.savefig(
+                image_path, 
+                facecolor='#1e1e1e', 
+                dpi=120,  # 提高清晰度
+                bbox_inches='tight',
+                pad_inches=0.1  # 最小边距
+            )
             plt.close()
             
             print(f"    [OK] Preview table: {df.shape[0]} rows × {df.shape[1]} cols")
