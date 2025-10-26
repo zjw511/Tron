@@ -495,19 +495,19 @@ python test_integration.py
 
 ## 📊 表格数据节点 (NEW!)
 
-在ComfyUI中直接显示表格数据，**不需要转换成图片**！
+在ComfyUI中显示表格数据，**表格渲染为图片直接显示在节点上**！
 
 ### 快速开始
 
 1. **安装依赖**：
 ```bash
-pip install pandas openpyxl
+pip install pandas openpyxl matplotlib
 ```
 
 2. **使用节点**：
    - `LoadCSV` - 加载CSV文件
    - `LoadExcel` - 加载Excel文件  
-   - `PreviewTable` - 在前端显示交互式表格
+   - `PreviewTable` - 将表格渲染为图片显示在节点上
    - `DataFrameToTable` - 转换任意数据为表格
 
 3. **创建工作流**：
@@ -515,15 +515,7 @@ pip install pandas openpyxl
 LoadCSV → PreviewTable
 ```
 
-4. **运行测试**：
-```bash
-# Windows
-双击 测试表格节点.bat
-
-# 或手动
-python full_server.py
-# 然后在浏览器中创建工作流
-```
+**PreviewTable节点会像PreviewImage一样，直接在节点上显示表格图片！**
 
 ### 示例
 
@@ -531,15 +523,15 @@ python full_server.py
 - 节点：`LoadCSV`
 - 配置：`file_path = examples/sample_data.csv`
 - 连接到：`PreviewTable`
-- 点击执行，自动弹出表格！
+- 点击执行，表格图片显示在PreviewTable节点上！
 
 ### 详细文档
 
-查看 [docs/TABLE_NODES_README.md](docs/TABLE_NODES_README.md) 了解：
-- 所有节点详细说明
-- 使用示例和最佳实践
-- 支持的数据格式
-- 前端UI交互
+查看 [表格显示更新说明.md](表格显示更新说明.md) 了解：
+- 表格显示方式说明
+- 优化和配置选项
+- 使用示例
+- 故障排除
 
 ## 📞 支持
 
