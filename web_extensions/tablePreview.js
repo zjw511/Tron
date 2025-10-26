@@ -118,6 +118,7 @@
         if (!tableData) return;
         
         console.log('[TablePreview] Rendering table in node:', nodeId);
+        console.log('[TablePreview] Table data:', tableData);
         
         // 创建表格容器
         const containerId = `table-preview-${nodeId}`;
@@ -129,23 +130,28 @@
             container.id = containerId;
             container.className = 'comfy-table-preview';
             container.style.cssText = `
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
                 background: #1e1e1e;
-                border: 1px solid #444;
-                border-radius: 4px;
-                margin: 10px;
-                padding: 10px;
+                border: 2px solid #444;
+                border-radius: 8px;
+                padding: 15px;
                 overflow: auto;
-                max-height: 400px;
-                max-width: 800px;
+                max-height: 500px;
+                max-width: 900px;
+                min-width: 600px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             `;
             
-            // 找到合适的位置添加
-            // ComfyUI通常在画布下方或侧边栏显示预览
-            const targetArea = document.querySelector('.comfy-ui-preview-area') 
-                || document.querySelector('#queue-button')?.parentElement 
-                || document.body;
+            console.log('[TablePreview] Creating new container with ID:', containerId);
             
-            targetArea.appendChild(container);
+            // 直接添加到body，使用fixed定位确保可见
+            document.body.appendChild(container);
+            console.log('[TablePreview] Container appended to body');
+        } else {
+            console.log('[TablePreview] Reusing existing container');
         }
         
         // 渲染表格HTML
@@ -213,11 +219,14 @@
             </div>
         `;
         
+        console.log('[TablePreview] Setting innerHTML...');
         container.innerHTML = tableHTML;
+        console.log('[TablePreview] innerHTML set, container visible:', container.offsetHeight > 0);
         
         // 添加"显示全部"按钮事件
         const showAllBtn = document.getElementById(`show-all-btn-${containerId}`);
         if (showAllBtn) {
+            console.log('[TablePreview] Attaching show-all button');
             showAllBtn.onclick = () => {
                 const tbody = container.querySelector('tbody');
                 tbody.innerHTML = generateAllRowsHTML(tableData);
@@ -227,13 +236,15 @@
         // 添加"在弹窗中查看"链接事件
         const showModalLink = document.getElementById(`show-modal-link-${containerId}`);
         if (showModalLink) {
+            console.log('[TablePreview] Attaching modal link');
             showModalLink.onclick = (e) => {
                 e.preventDefault();
                 showTableModal(tableData);
             };
         }
         
-        console.log('[TablePreview] Table rendered in node area');
+        console.log('[TablePreview] ✓ Table rendered successfully!');
+        console.log('[TablePreview] Container position:', container.getBoundingClientRect());
     }
     
     /**
