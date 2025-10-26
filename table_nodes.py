@@ -103,6 +103,14 @@ class PreviewTableNode(NodeBase):
     def _to_dataframe(self, data) -> pd.DataFrame:
         """将各种格式转换为DataFrame"""
         try:
+            # Tuple格式（ComfyUI标准输出格式）
+            if isinstance(data, tuple):
+                if len(data) > 0:
+                    # 递归处理tuple中的第一个元素
+                    return self._to_dataframe(data[0])
+                else:
+                    return pd.DataFrame()
+            
             # 已经是DataFrame
             if isinstance(data, pd.DataFrame):
                 return data

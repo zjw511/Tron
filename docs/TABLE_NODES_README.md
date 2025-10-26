@@ -200,6 +200,16 @@ openpyxl>=3.0.0  # 用于Excel支持
 2. 确认 `web_extensions/tablePreview.js` 已加载
 3. 刷新页面（Ctrl+Shift+R）
 
+### Q: 提示"Unsupported data type"错误？
+
+这通常是数据格式不匹配导致的。PreviewTable现已支持：
+- DataFrame
+- Tuple（ComfyUI标准格式）
+- 字典、列表
+- NumPy数组
+
+如果遇到此问题，请确保使用最新版本的table_nodes.py。
+
 ### Q: CSV加载失败？
 
 1. 检查文件路径是否正确
