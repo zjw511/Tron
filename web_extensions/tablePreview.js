@@ -43,9 +43,14 @@
             
             api.addEventListener('executed', (e) => {
                 const detail = e.detail || e;
-                if (detail && detail.output && detail.output.ui && detail.output.ui.table) {
-                    console.log('[TablePreview] Received table data:', detail.output.ui.table);
-                    showTableModal(detail.output.ui.table[0]);
+                console.log('[TablePreview] Event received:', detail);
+                
+                // 检查table数据
+                if (detail && detail.output && detail.output.table) {
+                    console.log('[TablePreview] ✓ Found table data:', detail.output.table);
+                    showTableModal(detail.output.table[0]);
+                } else {
+                    console.log('[TablePreview] ✗ No table in event:', detail);
                 }
             });
             
@@ -69,12 +74,26 @@
                 try {
                     const data = JSON.parse(event.data);
                     
+                    // 调试：打印所有消息类型
+                    if (data.type) {
+                        console.log('[TablePreview] WS message type:', data.type, data);
+                    }
+                    
                     // 检查是否是执行完成消息
                     if (data.type === 'executed' || data.type === 'execution_cached') {
+                        console.log('[TablePreview] Execution message:', data);
+                        
                         const output = data.data?.output;
-                        if (output && output.ui && output.ui.table) {
-                            console.log('[TablePreview] Received table via WebSocket:', output.ui.table);
-                            showTableModal(output.ui.table[0]);
+                        console.log('[TablePreview] Output data:', output);
+                        
+                        // 检查table数据（直接在output中，不在ui子对象中）
+                        if (output && output.table) {
+                            console.log('[TablePreview] ✓ Found table data:', output.table);
+                            showTableModal(output.table[0]);
+                        } else {
+                            console.log('[TablePreview] ✗ No table data in output');
+                            console.log('[TablePreview]   output:', output);
+                            console.log('[TablePreview]   output.table:', output?.table);
                         }
                     }
                 } catch (e) {
