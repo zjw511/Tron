@@ -23,8 +23,10 @@ ENV/
 # 数据目录（不提交用户数据）
 temp/*
 output/*
+user/*
 !temp/.gitkeep
 !output/.gitkeep
+!user/.gitkeep
 
 # 输入图片（可选：如果想保留示例图片，可以注释掉）
 # input/*

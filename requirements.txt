@@ -6,6 +6,10 @@ aiohttp>=3.8.0
 Pillow>=9.0.0
 numpy>=1.21.0
 
+# 信号处理和可视化（用于signal_nodes.py）
+matplotlib>=3.5.0
+scipy>=1.7.0
+
 # 工具库
 click>=8.0.0
 colorama>=0.4.0
