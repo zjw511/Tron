@@ -393,3 +393,14 @@ class YourNode(NodeBase):
 # 记得在NODE_REGISTRY中注册新节点
 # NODE_REGISTRY["YourNode"] = YourNode
 """
+
+# 导入表格节点（如果存在）
+try:
+    import table_nodes
+    if hasattr(table_nodes, 'NODE_CLASS_MAPPINGS'):
+        TABLE_NODES = table_nodes.NODE_CLASS_MAPPINGS
+        # 注册表格节点
+        NODE_REGISTRY.update(TABLE_NODES)
+        print(f"[OK] Loaded {len(TABLE_NODES)} table nodes: {list(TABLE_NODES.keys())}")
+except Exception as e:
+    print(f"[!] Table nodes not available: {e}")

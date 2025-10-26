@@ -10,6 +10,10 @@ numpy>=1.21.0
 matplotlib>=3.5.0
 scipy>=1.7.0
 
+# 数据处理（用于table_nodes.py）
+pandas>=1.5.0
+openpyxl>=3.0.0
+
 # 工具库
 click>=8.0.0
 colorama>=0.4.0

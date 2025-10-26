@@ -493,14 +493,63 @@ python test_integration.py
 - ✅ 中文界面支持
 - ✅ 详细文档
 
+## 📊 表格数据节点 (NEW!)
+
+在ComfyUI中直接显示表格数据，**不需要转换成图片**！
+
+### 快速开始
+
+1. **安装依赖**：
+```bash
+pip install pandas openpyxl
+```
+
+2. **使用节点**：
+   - `LoadCSV` - 加载CSV文件
+   - `LoadExcel` - 加载Excel文件  
+   - `PreviewTable` - 在前端显示交互式表格
+   - `DataFrameToTable` - 转换任意数据为表格
+
+3. **创建工作流**：
+```
+LoadCSV → PreviewTable
+```
+
+4. **运行测试**：
+```bash
+# Windows
+双击 测试表格节点.bat
+
+# 或手动
+python full_server.py
+# 然后在浏览器中创建工作流
+```
+
+### 示例
+
+加载示例CSV文件：
+- 节点：`LoadCSV`
+- 配置：`file_path = examples/sample_data.csv`
+- 连接到：`PreviewTable`
+- 点击执行，自动弹出表格！
+
+### 详细文档
+
+查看 [docs/TABLE_NODES_README.md](docs/TABLE_NODES_README.md) 了解：
+- 所有节点详细说明
+- 使用示例和最佳实践
+- 支持的数据格式
+- 前端UI交互
+
 ## 📞 支持
 
 遇到问题？
 
 1. 查看 [使用指南.md](使用指南.md)
 2. 查看 [FULL_FEATURES.md](FULL_FEATURES.md)
-3. 检查服务器日志
-4. 检查浏览器Console（F12）
+3. 查看 [TABLE_NODES_README.md](docs/TABLE_NODES_README.md) （表格节点）
+4. 检查服务器日志
+5. 检查浏览器Console（F12）
 
 ---
 
