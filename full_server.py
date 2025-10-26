@@ -95,6 +95,19 @@ async def handle_prompt(request):
         # 获取prompt数据
         prompt_data = data.get('prompt', data)
         
+        # 验证prompt_data是字典类型
+        if not isinstance(prompt_data, dict):
+            print(f"[X] Invalid prompt_data type: {type(prompt_data)}")
+            return web.json_response(
+                {"error": f"Invalid prompt data: expected dict, got {type(prompt_data).__name__}"}, 
+                status=400
+            )
+        
+        # 验证prompt_data包含节点
+        if not prompt_data:
+            print(f"[X] Empty prompt_data")
+            return web.json_response({"error": "Empty workflow"}, status=400)
+        
         # 生成prompt ID
         prompt_id = f"prompt-{uuid.uuid4().hex[:8]}"
         
@@ -461,6 +474,12 @@ async def execute_workflow(workflow_data: dict, prompt_id: str) -> dict:
         
         # 构建依赖图
         for node_id, node_data in nodes.items():
+            # 验证node_data是字典
+            if not isinstance(node_data, dict):
+                print(f"[X] Invalid node_data for node {node_id}: {type(node_data)}")
+                print(f"    node_data content: {node_data}")
+                continue
+            
             inputs = node_data.get('inputs', {})
             for input_value in inputs.values():
                 if isinstance(input_value, list) and len(input_value) >= 2:
