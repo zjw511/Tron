@@ -45,8 +45,11 @@ class PreviewTableNode(NodeBase):
         }
     
     def execute(self, inputs: Dict[str, Any], node_id: str) -> Dict[str, Any]:
-        """执行表格预览"""
+        """执行表格预览 - 生成表格图片"""
         import uuid
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # 非GUI后端
         
         table_data = inputs.get("table_data")
         max_rows = inputs.get("max_rows", 100)
@@ -63,42 +66,87 @@ class PreviewTableNode(NodeBase):
             print(f"    [X] Invalid or empty table data")
             return {"ui": {"text": ["Empty data"]}}
         
-        # 限制行数
-        if len(df) > max_rows:
-            df = df.head(max_rows)
-            truncated = True
-        else:
-            truncated = False
+        # 限制显示行数
+        display_rows = min(20, len(df))  # 最多显示20行
+        df_display = df.head(display_rows)
         
-        # 转换为JSON格式
-        table_json = {
-            "id": str(uuid.uuid4()),
-            "title": title,
-            "columns": list(df.columns),
-            "data": df.values.tolist(),
-            "shape": df.shape,
-            "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-            "truncated": truncated,
-            "total_rows": len(df)
-        }
+        # 生成表格图片
+        unique_id = str(uuid.uuid4())[:8]
+        image_filename = f"table_{node_id}_{unique_id}.png"
+        image_path = Path(self.output_dir) / image_filename
         
-        # 保存到文件（可选）
-        output_path = Path(self.output_dir) / f"table_{table_json['id']}.json"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(table_json, f, ensure_ascii=False, indent=2)
-        
-        print(f"    [OK] Preview table: {df.shape[0]} rows × {df.shape[1]} cols")
-        if truncated:
-            print(f"    [!] Showing first {max_rows} rows")
-        
-        # 返回给前端的数据
-        return {
-            "ui": {
-                "table": [table_json]
+        try:
+            # 创建图表
+            fig, ax = plt.subplots(figsize=(12, min(10, len(df_display) * 0.5 + 2)))
+            fig.patch.set_facecolor('#1e1e1e')
+            ax.axis('tight')
+            ax.axis('off')
+            
+            # 准备表格数据
+            cell_text = df_display.values.tolist()
+            col_labels = list(df_display.columns)
+            row_labels = [f"{i}" for i in range(len(df_display))]
+            
+            # 创建表格
+            table = ax.table(
+                cellText=cell_text,
+                rowLabels=row_labels,
+                colLabels=col_labels,
+                cellLoc='left',
+                loc='center',
+                colWidths=[0.15] * len(col_labels)
+            )
+            
+            # 设置样式
+            table.auto_set_font_size(False)
+            table.set_fontsize(9)
+            table.scale(1, 1.5)
+            
+            # 设置颜色
+            for (i, j), cell in table.get_celld().items():
+                if i == 0:  # 表头
+                    cell.set_facecolor('#2a2a2a')
+                    cell.set_text_props(color='white', weight='bold')
+                elif j == -1:  # 行号列
+                    cell.set_facecolor('#2a2a2a')
+                    cell.set_text_props(color='#888')
+                else:  # 数据单元格
+                    if i % 2 == 0:
+                        cell.set_facecolor('#1a1a1a')
+                    else:
+                        cell.set_facecolor('#242424')
+                    cell.set_text_props(color='#ddd')
+                
+                cell.set_edgecolor('#444')
+            
+            # 添加标题
+            plt.title(f"{title}\n{len(df)} rows × {len(df.columns)} columns" + 
+                     (f" (showing first {display_rows})" if len(df) > display_rows else ""),
+                     color='white', pad=20, fontsize=12)
+            
+            plt.tight_layout()
+            plt.savefig(image_path, facecolor='#1e1e1e', dpi=100, bbox_inches='tight')
+            plt.close()
+            
+            print(f"    [OK] Preview table: {df.shape[0]} rows × {df.shape[1]} cols")
+            print(f"    [OK] Saved table image: {image_filename}")
+            
+            # 返回图片（像PreviewImage一样）
+            return {
+                "ui": {
+                    "images": [{
+                        "filename": image_filename,
+                        "subfolder": "",
+                        "type": "temp"
+                    }]
+                }
             }
-        }
+            
+        except Exception as e:
+            print(f"    [X] Error generating table image: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"ui": {"text": [f"Error: {str(e)}"]}}
     
     def _to_dataframe(self, data) -> pd.DataFrame:
         """将各种格式转换为DataFrame"""
