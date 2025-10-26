@@ -193,8 +193,15 @@ async def handle_embeddings(request):
 
 
 async def handle_extensions(request):
-    """扩展API"""
-    return web.json_response([])
+    """扩展API - 返回web_extensions目录中的JS文件列表"""
+    extensions_dir = Path(__file__).parent / "web_extensions"
+    extensions = []
+    
+    if extensions_dir.exists():
+        for js_file in extensions_dir.glob("*.js"):
+            extensions.append(f"/web_extensions/{js_file.name}")
+    
+    return web.json_response(extensions)
 
 
 async def handle_system_stats(request):
@@ -682,9 +689,27 @@ async def start_server():
     
     # 根路径处理
     async def handle_root(request):
-        """处理根路径"""
+        """处理根路径 - 注入web_extensions脚本"""
         index_path = Path(frontend_path) / "index.html"
-        return web.FileResponse(index_path)
+        
+        # 读取原始HTML
+        with open(index_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # 检查是否有web_extensions
+        extensions_dir = Path(__file__).parent / "web_extensions"
+        if extensions_dir.exists():
+            extension_scripts = []
+            for js_file in sorted(extensions_dir.glob("*.js")):
+                extension_scripts.append(f'<script src="/web_extensions/{js_file.name}"></script>')
+            
+            # 在</body>前注入扩展脚本
+            if extension_scripts:
+                injection = '\n'.join(extension_scripts) + '\n'
+                html_content = html_content.replace('</body>', f'{injection}</body>')
+                print(f"[OK] Injected {len(extension_scripts)} extension script(s)")
+        
+        return web.Response(text=html_content, content_type='text/html')
     
     # ==================== 路由配置 ====================
     
@@ -768,6 +793,12 @@ async def start_server():
     # 根路径
     app.router.add_get('/', handle_root)
     
+    # Web扩展静态文件
+    web_extensions_dir = Path(__file__).parent / "web_extensions"
+    if web_extensions_dir.exists():
+        app.router.add_static('/web_extensions', web_extensions_dir, show_index=False)
+        print(f"[OK] Loaded web_extensions from: {web_extensions_dir}")
+    
     # 静态文件（最后添加）
     app.router.add_static('/', frontend_path, show_index=False, follow_symlinks=True)
     
@@ -777,6 +808,13 @@ async def start_server():
     await runner.setup()
     site = web.TCPSite(runner, '127.0.0.1', 8188)
     await site.start()
+    
+    # 检查并显示扩展信息
+    web_extensions_dir = Path(__file__).parent / "web_extensions"
+    if web_extensions_dir.exists():
+        ext_count = len(list(web_extensions_dir.glob("*.js")))
+        if ext_count > 0:
+            print(f"[>>] Web extensions: {ext_count} file(s) loaded")
     
     print(f"\n[>>] Server running at: http://127.0.0.1:8188")
     print(f"[>>] Input dir: {INPUT_DIR.absolute()}")
