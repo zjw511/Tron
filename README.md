@@ -182,6 +182,33 @@ Get-Process python | Stop-Process -Force
 - `[OK]` - 成功日志
 - `[X]` - 错误日志
 
+### Q: 如何批量执行超过100次工作流？
+
+前端 Queue Button 有100次限制。使用 `batch_queue_workflow.py` 绕过限制：
+
+```bash
+python batch_queue_workflow.py
+```
+
+**注意**：脚本需要**API格式**的工作流文件。
+
+**获取API格式工作流的方法：**
+
+1. **通过浏览器开发者工具（推荐）**：
+   - 打开ComfyUI界面
+   - 按F12打开开发者工具
+   - 切换到 Network（网络）标签
+   - 点击 'Queue Prompt' 执行一次工作流
+   - 在Network中找到 `/prompt` 请求
+   - 右键 → Copy → Copy Request Payload
+   - 将内容保存为JSON文件（如 `workflow_api.json`）
+
+2. **修改脚本使用新文件**：
+```python
+# 在 batch_queue_workflow.py 中修改
+workflow = load_workflow("workflow_api.json")  # 使用你保存的文件
+```
+
 ## 🔧 开发说明
 
 ### 添加自定义节点

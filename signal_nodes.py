@@ -149,6 +149,7 @@ class NetworkReceiverNode(NodeBase):
                     "host": ["STRING", {"default": "0.0.0.0"}],
                     "port": ["INT", {"default": 8888, "min": 1024, "max": 65535}],
                     "buffer_size": ["INT", {"default": 65536, "min": 1024, "max": 65536}],
+                    "queue_size": ["INT", {"default": 5000, "min": 10, "max": 10000}],
                     "continuous": ["BOOLEAN", {"default": True}],
                     "timeout": ["FLOAT", {"default": 1.0, "min": 0.1, "max": 60.0}]
                 }
@@ -247,6 +248,7 @@ class NetworkReceiverNode(NodeBase):
         host = inputs.get("host", "0.0.0.0")
         port = inputs.get("port", 8888)
         buffer_size = inputs.get("buffer_size", 65536)  # 默认64KB，避免WinError 10040
+        queue_size = inputs.get("queue_size", 5000)  # 队列大小，默认1000
         continuous = inputs.get("continuous", True)
         timeout = inputs.get("timeout", 1.0)
         
@@ -269,8 +271,8 @@ class NetworkReceiverNode(NodeBase):
                             except:
                                 pass
                     
-                    # 创建新接收器
-                    new_queue = queue.Queue(maxsize=100)
+                    # 创建新接收器（使用用户指定的队列大小）
+                    new_queue = queue.Queue(maxsize=queue_size)
                     receiver = {
                         "queue": new_queue,
                         "running": True,
