@@ -6,104 +6,86 @@
 (function() {
     'use strict';
     
-    // 等待ComfyUI加载完成
-    const app = window.app || window.comfyAPI?.app;
-    
-    if (!app) {
-        console.error('[TablePreview] ComfyUI app not found');
-        return;
-    }
-    
     console.log('[TablePreview] Loading table preview extension...');
     
-    // 注册自定义widget类型
-    app.registerExtension({
-        name: "comfy.tablePreview",
-        
-        async beforeRegisterNodeDef(nodeType, nodeData, app) {
-            // 只处理PreviewTable节点
-            if (nodeData.name === "PreviewTable") {
-                console.log('[TablePreview] Registering PreviewTable node');
+    // 等待DOM加载完成
+    function waitForComfyUI() {
+        return new Promise((resolve) => {
+            if (window.comfyAPI || window.app) {
+                resolve();
+            } else {
+                const checkInterval = setInterval(() => {
+                    if (window.comfyAPI || window.app) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
                 
-                // 重写节点的onExecuted方法
-                const onExecuted = nodeType.prototype.onExecuted;
-                nodeType.prototype.onExecuted = function(message) {
-                    // 调用原始方法
-                    if (onExecuted) {
-                        onExecuted.apply(this, arguments);
-                    }
-                    
-                    // 处理表格数据
-                    if (message?.table) {
-                        console.log('[TablePreview] Received table data:', message.table);
-                        renderTable(this, message.table[0]);
-                    }
-                };
+                // 超时后也继续
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    resolve();
+                }, 5000);
             }
+        });
+    }
+    
+    // 初始化扩展
+    waitForComfyUI().then(() => {
+        console.log('[TablePreview] ComfyUI loaded, registering extension...');
+        
+        // 尝试使用ComfyUI的扩展API
+        const api = window.comfyAPI || window.api;
+        
+        if (api && typeof api.addEventListener === 'function') {
+            // 使用事件监听方式
+            console.log('[TablePreview] Using event-based API');
+            
+            api.addEventListener('executed', (e) => {
+                const detail = e.detail || e;
+                if (detail && detail.output && detail.output.ui && detail.output.ui.table) {
+                    console.log('[TablePreview] Received table data:', detail.output.ui.table);
+                    showTableModal(detail.output.ui.table[0]);
+                }
+            });
+            
+        } else {
+            // 回退到直接监听WebSocket消息
+            console.log('[TablePreview] Using direct monitoring');
+            monitorWebSocketMessages();
         }
     });
     
     /**
-     * 渲染表格到节点
+     * 监听WebSocket消息（回退方案）
      */
-    function renderTable(node, tableData) {
-        if (!tableData) return;
-        
-        // 创建或获取表格容器
-        let tableWidget = node.widgets?.find(w => w.name === "table_display");
-        
-        if (!tableWidget) {
-            // 创建一个自定义widget
-            tableWidget = {
-                name: "table_display",
-                type: "customWidget",
-                value: "",
-                draw: function(ctx, node, width, y) {
-                    // 在canvas上绘制表格摘要
-                    ctx.font = "12px monospace";
-                    ctx.fillStyle = "#fff";
+    function monitorWebSocketMessages() {
+        // 拦截WebSocket
+        const OriginalWebSocket = window.WebSocket;
+        window.WebSocket = function(url, protocols) {
+            const ws = new OriginalWebSocket(url, protocols);
+            
+            ws.addEventListener('message', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
                     
-                    const info = `${tableData.title} [${tableData.shape[0]}×${tableData.shape[1]}]`;
-                    ctx.fillText(info, 10, y + 15);
-                    
-                    if (tableData.truncated) {
-                        ctx.fillStyle = "#ff9";
-                        ctx.fillText(`(showing first ${tableData.total_rows} rows)`, 10, y + 30);
-                        return 45;
+                    // 检查是否是执行完成消息
+                    if (data.type === 'executed' || data.type === 'execution_cached') {
+                        const output = data.data?.output;
+                        if (output && output.ui && output.ui.table) {
+                            console.log('[TablePreview] Received table via WebSocket:', output.ui.table);
+                            showTableModal(output.ui.table[0]);
+                        }
                     }
-                    
-                    return 25;
-                },
-                computeSize: function(width) {
-                    return [width, tableData.truncated ? 45 : 25];
+                } catch (e) {
+                    // 忽略非JSON消息
                 }
-            };
+            });
             
-            node.addCustomWidget(tableWidget);
-        }
-        
-        // 在节点上添加点击事件
-        const originalOnMouseDown = node.onMouseDown;
-        node.onMouseDown = function(e, pos, canvas) {
-            // 检查是否点击在widget区域
-            if (pos[1] > this.size[1] - 60) {
-                showTableModal(tableData);
-                return true;
-            }
-            
-            if (originalOnMouseDown) {
-                return originalOnMouseDown.call(this, e, pos, canvas);
-            }
+            return ws;
         };
         
-        // 自动显示表格（第一次）
-        if (!node._tableShown) {
-            node._tableShown = true;
-            setTimeout(() => showTableModal(tableData), 100);
-        }
-        
-        // 调整节点大小
-        node.setSize([Math.max(300, node.size[0]), node.size[1]]);
+        console.log('[TablePreview] WebSocket monitoring active');
     }
     
     /**
