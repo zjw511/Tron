@@ -8,6 +8,9 @@
     
     console.log('[TablePreview] Loading table preview extension...');
     
+    // 暴露showTableModal到全局，供"在弹窗中查看"链接使用
+    window.showTableModal = null;
+    
     // 等待DOM加载完成
     function waitForComfyUI() {
         return new Promise((resolve) => {
@@ -89,7 +92,8 @@
                         // 检查table数据（直接在output中，不在ui子对象中）
                         if (output && output.table) {
                             console.log('[TablePreview] ✓ Found table data:', output.table);
-                            showTableModal(output.table[0]);
+                            // 不自动弹窗，而是渲染到节点上
+                            renderTableInNode(data.data.node, output.table[0]);
                         } else {
                             console.log('[TablePreview] ✗ No table data in output');
                             console.log('[TablePreview]   output:', output);
@@ -108,7 +112,148 @@
     }
     
     /**
-     * 显示表格模态框
+     * 在节点中渲染表格（类似PreviewImage）
+     */
+    function renderTableInNode(nodeId, tableData) {
+        if (!tableData) return;
+        
+        console.log('[TablePreview] Rendering table in node:', nodeId);
+        
+        // 创建表格容器
+        const containerId = `table-preview-${nodeId}`;
+        let container = document.getElementById(containerId);
+        
+        if (!container) {
+            // 创建新容器
+            container = document.createElement('div');
+            container.id = containerId;
+            container.className = 'comfy-table-preview';
+            container.style.cssText = `
+                background: #1e1e1e;
+                border: 1px solid #444;
+                border-radius: 4px;
+                margin: 10px;
+                padding: 10px;
+                overflow: auto;
+                max-height: 400px;
+                max-width: 800px;
+            `;
+            
+            // 找到合适的位置添加
+            // ComfyUI通常在画布下方或侧边栏显示预览
+            const targetArea = document.querySelector('.comfy-ui-preview-area') 
+                || document.querySelector('#queue-button')?.parentElement 
+                || document.body;
+            
+            targetArea.appendChild(container);
+        }
+        
+        // 渲染表格HTML
+        const tableHTML = `
+            <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: #fff;">${escapeHtml(tableData.title)}</strong>
+                    <span style="color: #aaa; margin-left: 10px;">
+                        ${tableData.shape[0]} rows × ${tableData.shape[1]} columns
+                    </span>
+                </div>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                        style="background:#444;border:none;color:#fff;padding:4px 12px;border-radius:3px;cursor:pointer;">
+                    关闭
+                </button>
+            </div>
+            ${tableData.truncated ? `
+                <div style="background: #443300; padding: 6px; border-radius: 3px; margin-bottom: 8px; color: #ffcc00; font-size: 12px;">
+                    ⚠ 显示前 ${tableData.total_rows} 行
+                </div>
+            ` : ''}
+            <div style="overflow: auto; max-height: 350px;">
+                <table style="width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #2a2a2a; position: sticky; top: 0;">
+                            <th style="padding: 6px; border: 1px solid #444; color: #aaa; text-align: center;">#</th>
+                            ${tableData.columns.map(col => `
+                                <th style="padding: 6px; border: 1px solid #444; color: #fff; text-align: left;">
+                                    ${escapeHtml(col)}
+                                    <br>
+                                    <span style="color: #888; font-size: 9px;">${tableData.dtypes[col] || ''}</span>
+                                </th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableData.data.slice(0, 20).map((row, idx) => `
+                            <tr style="background: ${idx % 2 === 0 ? '#1a1a1a' : '#242424'};">
+                                <td style="padding: 6px; border: 1px solid #444; color: #888; text-align: center;">${idx}</td>
+                                ${row.map(cell => `
+                                    <td style="padding: 6px; border: 1px solid #444; color: #ddd;">
+                                        ${escapeHtml(formatCell(cell))}
+                                    </td>
+                                `).join('')}
+                            </tr>
+                        `).join('')}
+                        ${tableData.data.length > 20 ? `
+                            <tr>
+                                <td colspan="${tableData.columns.length + 1}" style="padding: 8px; text-align: center; color: #888; background: #2a2a2a;">
+                                    ... 还有 ${tableData.data.length - 20} 行
+                                    <button id="show-all-btn-${containerId}" style="margin-left: 10px; background:#555;border:none;color:#fff;padding:3px 10px;border-radius:3px;cursor:pointer;">
+                                        显示全部
+                                    </button>
+                                </td>
+                            </tr>
+                        ` : ''}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #888;">
+                Node ID: ${nodeId} | 
+                <a href="#" id="show-modal-link-${containerId}" style="color: #6af; text-decoration: none;">
+                    在弹窗中查看
+                </a>
+            </div>
+        `;
+        
+        container.innerHTML = tableHTML;
+        
+        // 添加"显示全部"按钮事件
+        const showAllBtn = document.getElementById(`show-all-btn-${containerId}`);
+        if (showAllBtn) {
+            showAllBtn.onclick = () => {
+                const tbody = container.querySelector('tbody');
+                tbody.innerHTML = generateAllRowsHTML(tableData);
+            };
+        }
+        
+        // 添加"在弹窗中查看"链接事件
+        const showModalLink = document.getElementById(`show-modal-link-${containerId}`);
+        if (showModalLink) {
+            showModalLink.onclick = (e) => {
+                e.preventDefault();
+                showTableModal(tableData);
+            };
+        }
+        
+        console.log('[TablePreview] Table rendered in node area');
+    }
+    
+    /**
+     * 生成所有行的HTML
+     */
+    function generateAllRowsHTML(tableData) {
+        return tableData.data.map((row, idx) => `
+            <tr style="background: ${idx % 2 === 0 ? '#1a1a1a' : '#242424'};">
+                <td style="padding: 6px; border: 1px solid #444; color: #888; text-align: center;">${idx}</td>
+                ${row.map(cell => `
+                    <td style="padding: 6px; border: 1px solid #444; color: #ddd;">
+                        ${escapeHtml(formatCell(cell))}
+                    </td>
+                `).join('')}
+            </tr>
+        `).join('');
+    }
+    
+    /**
+     * 显示表格模态框（作为备选功能）
      */
     function showTableModal(tableData) {
         // 创建模态框
@@ -255,6 +400,9 @@
         div.textContent = text;
         return div.innerHTML;
     }
+    
+    // 暴露showTableModal到全局
+    window.showTableModal = showTableModal;
     
     console.log('[TablePreview] Table preview extension loaded!');
     
